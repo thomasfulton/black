@@ -6,8 +6,8 @@
 
 - Correct max string length calculation when there are string operators (#2292)
 - Fixed option usage when using the `--code` flag (#2259)
-- Improve handling of TOML configuration files, notably Black now supports reading TOML
-  v1.0.0 files (#2301)
+- Configuration files using TOML features higher than spec v0.5.0 are now supported
+  (#2301)
 
 ## 21.5b2
 
