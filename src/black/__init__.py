@@ -112,9 +112,7 @@ def read_pyproject_toml(
     try:
         config = parse_pyproject_toml(value)
     except (OSError, ValueError) as e:
-        raise click.FileError(
-            filename=value, hint=f"Error reading configuration file: {e}"
-        )
+        raise click.UsageError(f"unable to read configuration file ({value}): {e}")
 
     if not config:
         return None

@@ -1927,6 +1927,14 @@ class BlackTestCase(BlackBaseTestCase):
         finally:
             tmp_file.unlink()
 
+    def test_invalid_config_output(self) -> None:
+        invalid_config = (THIS_DIR / "invalid.toml").resolve()
+        result = BlackRunner().invoke(black.main, ["--config", str(invalid_config)])
+        assert result.exit_code
+        assert "unable to read configuration file" in result.stderr
+        assert f"({invalid_config!s})" in result.stderr
+        assert 'Expected "=" after a key in a key-to-value mapping' in result.stderr
+
     def test_parse_pyproject_toml(self) -> None:
         test_toml_file = THIS_DIR / "test.toml"
         config = black.parse_pyproject_toml(str(test_toml_file))
