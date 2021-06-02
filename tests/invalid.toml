@@ -1,2 +1,0 @@
-[tool.black]
-list ["someone", "forget", "an", "equal", "sign"]
