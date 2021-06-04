@@ -38,7 +38,7 @@ from black.comments import normalize_fmt_off
 from black.mode import Mode, TargetVersion
 from black.mode import Feature, supports_feature, VERSION_TO_FEATURES
 from black.cache import read_cache, write_cache, get_cache_info, filter_cached, Cache
-from black.concurrency import cancel, shutdown
+from black.concurrency import cancel, shutdown, maybe_install_uvloop
 from black.output import dump_to_file, diff, color_diff, out, err
 from black.report import Report, Changed
 from black.files import find_project_root, find_pyproject_toml, parse_pyproject_toml
@@ -53,14 +53,6 @@ from blib2to3.pytree import Node, Leaf
 from blib2to3.pgen2 import token
 
 from _black_version import version as __version__
-
-# If our environment has uvloop installed lets use it
-try:
-    import uvloop
-
-    uvloop.install()
-except ImportError:
-    pass
 
 # types
 FileContent = str
@@ -250,6 +242,14 @@ def validate_regex(
     help="If --fast given, skip temporary sanity checks. [default: --safe]",
 )
 @click.option(
+    "--required-version",
+    type=str,
+    help=(
+        "Require a specific version of Black to be running (useful for unifying results"
+        " across many environments e.g. with a pyproject.toml file)."
+    ),
+)
+@click.option(
     "--include",
     type=str,
     default=DEFAULT_INCLUDES,
@@ -359,6 +359,7 @@ def main(
     experimental_string_processing: bool,
     quiet: bool,
     verbose: bool,
+    required_version: str,
     include: Pattern,
     exclude: Optional[Pattern],
     extend_exclude: Optional[Pattern],
@@ -368,6 +369,17 @@ def main(
     config: Optional[str],
 ) -> None:
     """The uncompromising code formatter."""
+    if config and verbose:
+        out(f"Using configuration from {config}.", bold=False, fg="blue")
+
+    error_msg = "Oh no! 💥 💔 💥"
+    if required_version and required_version != __version__:
+        err(
+            f"{error_msg} The required version `{required_version}` does not match"
+            f" the running version `{__version__}`!"
+        )
+        ctx.exit(1)
+
     write_back = WriteBack.from_configuration(check=check, diff=diff, color=color)
     if target_version:
         versions = set(target_version)
@@ -382,8 +394,6 @@ def main(
         magic_trailing_comma=not skip_magic_trailing_comma,
         experimental_string_processing=experimental_string_processing,
     )
-    if config and verbose:
-        out(f"Using configuration from {config}.", bold=False, fg="blue")
 
     if code is not None:
         # Run in quiet mode by default with -c; the extra output isn't useful.
@@ -436,9 +446,9 @@ def main(
             )
 
     if verbose or not quiet:
-        out("Oh no! 💥 💔 💥" if report.return_code else "All done! ✨ 🍰 ✨")
+        out(error_msg if report.return_code else "All done! ✨ 🍰 ✨")
         if code is None:
-            click.secho(str(report), err=True)
+            click.echo(str(report), err=True)
     ctx.exit(report.return_code)
 
 
@@ -1112,6 +1122,7 @@ def patch_click() -> None:
 
 
 def patched_main() -> None:
+    maybe_install_uvloop()
     freeze_support()
     patch_click()
     main()
